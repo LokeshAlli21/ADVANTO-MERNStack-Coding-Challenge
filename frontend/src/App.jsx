@@ -33,7 +33,7 @@ const App = () => {
   const [statistics, setStatistics] = useState({ totalAmount: 0, soldItems: 0, unsoldItems: 0 });
   const [barChartData, setBarChartData] = useState(null);
 
-  const months = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+  const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const monthsInString = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -47,6 +47,8 @@ const App = () => {
         const response = await axios.get(`${serverHost}/api/transactions`, {
           params: { month, search, page }
         });
+        console.log(response.data);
+        
         const { transactions: transactionData, total } = response.data || {};
         if (transactionData && transactionData.length > 0) {
           setTransactions(transactionData);
@@ -62,10 +64,10 @@ const App = () => {
         setLoading(false);
       }
     };
-
+  
     fetchTransactions();
   }, [month, search, page]);
-
+  
   // Fetch Statistics
   useEffect(() => {
     const fetchStatistics = async () => {
@@ -78,10 +80,10 @@ const App = () => {
         console.error('Error fetching statistics:', err);
       }
     };
-
+  
     fetchStatistics();
   }, [month]);
-
+  
   // Fetch Bar Chart Data
   useEffect(() => {
     const fetchBarChartData = async () => {
@@ -105,21 +107,48 @@ const App = () => {
         console.error('Error fetching bar chart data:', err);
       }
     };
-
+  
     fetchBarChartData();
   }, [month]);
 
   const handleSearchChange = (e) => setSearch(e.target.value);
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Transactions</h1>
-      <MonthDropdown month={month} setMonth={setMonth} months={months} monthsInString={monthsInString} />
-      <SearchBox search={search} handleSearchChange={handleSearchChange} />
-      <TransactionsTable transactions={transactions} loading={loading} error={error} />
-      <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+    <div className="container mx-auto p-6 bg-gradient-to-br from-purple-100 to-blue-200 rounded-lg shadow-xl">
+      <h1 className="text-5xl font-extrabold mb-8 text-center text-indigo-800">Transaction Dashboard</h1>
+  
+      {/* Month Dropdown and Search Box */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className="flex items-center">
+          <div className="w-full bg-white rounded-lg shadow-lg p-4 transition transform hover:scale-105 duration-300">
+            <MonthDropdown month={month} setMonth={setMonth} months={months} monthsInString={monthsInString} />
+          </div>
+        </div>
+        <div className="flex items-center">
+          <div className="w-full bg-white rounded-lg shadow-lg p-4 transition transform hover:scale-105 duration-300">
+            <SearchBox search={search} handleSearchChange={handleSearchChange} />
+          </div>
+        </div>
+      </div>
+  
+      {/* Transactions Table */}
+      <div className="overflow-x-auto mb-8 bg-white rounded-lg shadow-lg p-4 border border-gray-300">
+        <TransactionsTable transactions={transactions} loading={loading} error={error} />
+      </div>
+  
+      {/* Pagination */}
+      <div className="flex justify-center mb-6">
+        <Pagination page={page} totalPages={totalPages} setPage={setPage} />
+      </div>
+  
+      {/* Statistics Section */}
       <Statistics statistics={statistics} />
-      <BarChart barChartData={barChartData} />
+  
+      {/* Bar Chart Section */}
+      <div className="bg-white p-4 rounded-lg shadow-lg mb-8 border border-gray-300">
+        <h2 className="text-3xl font-bold mb-4 text-center text-indigo-800">Price Range Distribution</h2>
+        <BarChart barChartData={barChartData} />
+      </div>
     </div>
   );
 };

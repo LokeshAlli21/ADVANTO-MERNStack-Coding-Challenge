@@ -1,12 +1,12 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import axios from 'axios';
-import cors from 'cors'; // Import cors
-import Product from './models/Product.js'; // Ensure this path is correct
+import cors from 'cors';
+import Product from './models/Product.js';
 
 const app = express();
 app.use(express.json());
-app.use(cors()); // Use cors middleware to handle CORS issues
+app.use(cors());
 
 const PORT = process.env.PORT || 5000;
 const DB_URL = 'mongodb://localhost:27017/mern_stack_db';
@@ -16,18 +16,27 @@ mongoose.connect(DB_URL)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// Third-party API URL
-const API_URL = process.env.API_URL;
-
 // Initialize the database with seed data from the third-party API
 app.get('/api/initialize', async (req, res) => {
   try {
-    const { data: products } = await axios.get(API_URL);
+    const { data: products } = await axios.get("https://s3.amazonaws.com/roxiler.com/product_transaction.json");
 
     // Save products to the database
     await Product.deleteMany({});
-    await Product.insertMany(products);
 
+    // Ensure products match the new schema
+    const formattedProducts = products.map(product => ({
+      title: product.title,
+      description: product.description,
+      price: product.price,
+      category: product.category,
+      dateOfSale: product.dateOfSale,
+      isSold: product.sold,
+      image: product.image,
+      originalId: product.id,
+    }));
+
+    await Product.insertMany(formattedProducts);
     res.status(200).json({ message: 'Database initialized with seed data' });
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -36,28 +45,43 @@ app.get('/api/initialize', async (req, res) => {
 });
 
 // List all transactions with search and pagination
+// List all transactions with search and pagination
 app.get('/api/transactions', async (req, res) => {
   const { search = '', page = 1, perPage = 10, month } = req.query;
 
+  // Validate month parameter
   if (!month) {
     return res.status(400).json({ error: 'Month is required' });
   }
 
-  const regex = new RegExp(search, 'i');
-  const skip = (page - 1) * perPage;
+  const regex = new RegExp(search, 'i'); // Case-insensitive regex for search
+  const skip = (page - 1) * perPage; // Calculate how many records to skip
 
   try {
+    const monthFormatted = month.padStart(2, '0'); // Ensure month is two digits
+
+    // Base query to filter by month
     const query = {
-      dateOfSale: { $regex: `${month}-` }, // Filter by month
-      isSold: false, // Only get unsold items
+      dateOfSale: { $regex: `${monthFormatted}-` }, // Filter by month
       $or: [
         { title: regex },
         { description: regex },
       ],
     };
 
+    // Add price search only if search is a valid number or not empty
+    if (search.trim() !== '' && !isNaN(search)) {
+      query.$or.push({ price: { $regex: search } }); // Search for price
+    }
+
+    // Get total count of matching transactions
     const total = await Product.countDocuments(query);
-    const transactions = await Product.find(query).skip(skip).limit(Number(perPage));
+
+    // Exclude createdAt, updatedAt, and __v fields
+    const transactions = await Product.find(query)
+      .skip(skip)
+      .limit(Number(perPage))
+      .select('-createdAt -updatedAt -__v');
 
     if (!transactions.length) {
       return res.status(404).json({ message: 'No transactions found' });
@@ -70,40 +94,6 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
-// Statistics API
-app.get('/api/statistics', async (req, res) => {
-  const { month } = req.query;
-  
-  if (!month) {
-    return res.status(400).json({ error: 'Month is required' });
-  }
-
-  try {
-    const [totalSales] = await Product.aggregate([
-      { $match: { dateOfSale: { $regex: `${month}-` } } },
-      { $group: { _id: null, totalSaleAmount: { $sum: "$price" } } },
-    ]);
-
-    const totalSoldItems = await Product.countDocuments({
-      dateOfSale: { $regex: `${month}-` },
-      isSold: true,
-    });
-
-    const totalNotSoldItems = await Product.countDocuments({
-      dateOfSale: { $regex: `${month}-` },
-      isSold: false,
-    });
-
-    res.status(200).json({
-      totalSaleAmount: totalSales?.totalSaleAmount || 0,
-      totalSoldItems,
-      totalNotSoldItems,
-    });
-  } catch (error) {
-    console.error('Error fetching statistics:', error);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
-  }
-});
 
 // Bar chart API (Price ranges)
 app.get('/api/bar-chart', async (req, res) => {
@@ -113,6 +103,7 @@ app.get('/api/bar-chart', async (req, res) => {
     return res.status(400).json({ error: 'Month is required' });
   }
 
+  const monthFormatted = month.padStart(2, '0');
   const ranges = [
     { range: '0-100', min: 0, max: 100 },
     { range: '101-200', min: 101, max: 200 },
@@ -130,7 +121,7 @@ app.get('/api/bar-chart', async (req, res) => {
     const data = await Promise.all(
       ranges.map(async ({ range, min, max }) => {
         const count = await Product.countDocuments({
-          dateOfSale: { $regex: `${month}-` },
+          dateOfSale: { $regex: `${monthFormatted}-` },
           price: { $gte: min, $lte: max },
         });
         return { range, count };
@@ -152,8 +143,9 @@ app.get('/api/pie-chart', async (req, res) => {
   }
 
   try {
+    const monthFormatted = month.padStart(2, '0');
     const categories = await Product.aggregate([
-      { $match: { dateOfSale: { $regex: `${month}-` } } },
+      { $match: { dateOfSale: { $regex: `${monthFormatted}-` } } },
       { $group: { _id: '$category', count: { $sum: 1 } } },
     ]);
     res.status(200).json(categories);
@@ -172,17 +164,18 @@ app.get('/api/combined-data', async (req, res) => {
   }
 
   try {
+    const monthFormatted = month.padStart(2, '0');
     const [statistics, barChart, pieChart] = await Promise.all([
       Product.aggregate([
-        { $match: { dateOfSale: { $regex: `${month}-` } } },
+        { $match: { dateOfSale: { $regex: `${monthFormatted}-` } } },
         { $group: { _id: null, totalSaleAmount: { $sum: "$price" } } },
       ]),
       Product.aggregate([
-        { $match: { dateOfSale: { $regex: `${month}-` } } },
+        { $match: { dateOfSale: { $regex: `${monthFormatted}-` } } },
         { $group: { _id: '$category', count: { $sum: 1 } } },
       ]),
       Product.aggregate([
-        { $match: { dateOfSale: { $regex: `${month}-` } } },
+        { $match: { dateOfSale: { $regex: `${monthFormatted}-` } } },
         { $group: { _id: '$priceRange', count: { $sum: 1 } } },
       ]),
     ]);

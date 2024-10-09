@@ -8,7 +8,7 @@ const SearchBox = ({ search, handleSearchChange }) => {
         placeholder="Search transactions..."
         value={search}
         onChange={handleSearchChange}
-        className="border border-gray-300 rounded p-2 w-full"
+        className="border border-gray-300 rounded outline-none p-2 w-full"
       />
     </div>
   );
