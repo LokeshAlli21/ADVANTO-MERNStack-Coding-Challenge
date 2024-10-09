@@ -8,7 +8,7 @@ const Statistics = ({ statistics }) => {
             <div className="bg-green-300 p-4 rounded-lg shadow-md text-center transition-transform duration-300 hover:scale-105">
               <h3 className="text-xl font-semibold">Total Sale</h3>
               <p className="text-2xl font-bold text-purple-800">
-                {statistics.totalSaleAmount ? `${statistics.totalSaleAmount}` : '$0'}
+                {statistics.totalSaleAmount ? `${statistics.totalSaleAmount}` : 0}
               </p>
             </div>
             <div className="bg-yellow-300 p-4 rounded-lg shadow-md text-center transition-transform duration-300 hover:scale-105">

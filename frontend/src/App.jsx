@@ -76,6 +76,8 @@ const App = () => {
           params: { month }
         });
         setStatistics(response.data);
+        console.log(response.data);
+        
       } catch (err) {
         console.error('Error fetching statistics:', err);
       }

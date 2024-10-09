@@ -45,7 +45,6 @@ app.get('/api/initialize', async (req, res) => {
 });
 
 // List all transactions with search and pagination
-// List all transactions with search and pagination
 app.get('/api/transactions', async (req, res) => {
   const { search = '', page = 1, perPage = 10, month } = req.query;
 
@@ -94,6 +93,36 @@ app.get('/api/transactions', async (req, res) => {
   }
 });
 
+// Statistics API
+app.get('/api/statistics', async (req, res) => {
+  const { month } = req.query;
+  
+  if (!month) {
+    return res.status(400).json({ error: 'Month is required' });
+  }
+  try {
+    const [totalSales] = await Product.aggregate([
+      { $match: { dateOfSale: { $regex: `${month}-` } } },
+      { $group: { _id: null, totalSaleAmount: { $sum: "$price" } } },
+    ]);
+    const totalSoldItems = await Product.countDocuments({
+      dateOfSale: { $regex: `${month}-` },
+      isSold: true,
+    });
+    const totalNotSoldItems = await Product.countDocuments({
+      dateOfSale: { $regex: `${month}-` },
+      isSold: false,
+    });
+    res.status(200).json({
+      totalSaleAmount: totalSales?.totalSaleAmount || 0,
+      totalSoldItems,
+      totalNotSoldItems,
+    });
+  } catch (error) {
+    console.error('Error fetching statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch statistics' });
+  }
+});
 
 // Bar chart API (Price ranges)
 app.get('/api/bar-chart', async (req, res) => {
