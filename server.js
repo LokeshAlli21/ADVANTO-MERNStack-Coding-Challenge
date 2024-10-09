@@ -45,8 +45,57 @@ app.get('/api/initialize', async (req, res) => {
 });
 
 // List all transactions with search and pagination
+// app.get('/api/transactions', async (req, res) => {
+//   const search = req.query.search || '';
+//   const month = req.query.month;
+
+//   // Validate month parameter
+//   if (!month) {
+//     return res.status(400).json({ error: 'Month is required' });
+//   }
+
+//   const regex = new RegExp(search, 'i'); // Case-insensitive regex for search
+
+//   try {
+//     const monthFormatted = month.padStart(2, '0'); // Ensure month is two digits
+
+//     // Base query to filter by month
+//     const query = {
+//       dateOfSale: { $regex: `${monthFormatted}-` }, // Filter by month
+//       $or: [
+//         { title: regex },
+//         { description: regex },
+//       ],
+//     };
+
+//     // Add price search only if search is a valid number or not empty
+//     if (search.trim() !== '' && !isNaN(search)) {
+//       query.$or.push({ price: { $regex: search } }); // Search for price
+//     }
+
+//     // Log the query for debugging
+//     // console.log('Query:', query);
+
+//     // Get total count of matching transactions
+//     const total = await Product.countDocuments(query);
+
+//     // Exclude createdAt, updatedAt, and __v fields
+//     const transactions = await Product.find(query)
+//       .select('-createdAt -updatedAt -__v');
+
+//     if (!transactions.length) {
+//       return res.status(404).json({ message: 'No transactions found' });
+//     }
+
+//     res.status(200).json({ total, transactions });
+//   } catch (error) {
+//     console.error('Error fetching transactions:', error);
+//     res.status(500).json({ error: 'Failed to fetch transactions' });
+//   }
+// });
+
 app.get('/api/transactions', async (req, res) => {
-  const { search = '', page = 1, perPage = 10, month } = req.query;
+  const { search = '', page = 1, perPage = 15, month } = req.query;
 
   // Validate month parameter
   if (!month) {
@@ -92,6 +141,7 @@ app.get('/api/transactions', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
+
 
 // Statistics API
 app.get('/api/statistics', async (req, res) => {
