@@ -3,13 +3,15 @@ import mongoose from 'mongoose';
 import axios from 'axios';
 import cors from 'cors';
 import Product from './models/Product.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 const PORT = process.env.PORT || 5000;
-const DB_URL = 'mongodb://localhost:27017/mern_stack_db';
+const DB_URL = process.env.DB_URL;
 
 // Connect to MongoDB
 mongoose.connect(DB_URL)
@@ -19,7 +21,7 @@ mongoose.connect(DB_URL)
 // Initialize the database with seed data from the third-party API
 app.get('/api/initialize', async (req, res) => {
   try {
-    const { data: products } = await axios.get("https://s3.amazonaws.com/roxiler.com/product_transaction.json");
+    const { data: products } = await axios.get(process.env.API_URL);
 
     // Save products to the database
     await Product.deleteMany({});
