@@ -13,7 +13,7 @@ cd ADVANTO-MERNStack-Coding-Challenge
 
 ## Backend Setup
 
-#### 1. Install backend dependencies:
+### 1. Install backend dependencies:
 
 ```
 npm install
